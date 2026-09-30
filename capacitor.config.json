@@ -1,0 +1,6 @@
+{
+  "appId": "com.albaraka.jewellers",
+  "appName": "আল বারাকা জুয়েলার্স",
+  "webDir": "www",
+  "plugins": { "CapacitorHttp": { "enabled": true } }
+}

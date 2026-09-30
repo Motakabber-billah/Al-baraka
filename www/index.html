@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>আল বারাকা জুয়েলার্স</title>
+<style>
+:root{--bg:#fffaf0;--card:#fff;--tx:#3b2a05;--mu:#7a6a4a;--ac:#b8860b;--bd:#e6d5a8}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1508;--card:#262010;--tx:#f5e9c8;--mu:#b9a878;--ac:#e0b040;--bd:#4a3d1a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,"Noto Sans Bengali",sans-serif;padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px));max-width:520px;margin:auto}
+h1{margin:6px 0 2px;text-align:center;color:var(--ac);font-size:1.4rem}
+.sub{text-align:center;color:var(--mu);font-size:.85rem;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:12px}
+h2{font-size:1rem;margin:0 0 8px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tabs button{padding:10px 2px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);border-radius:10px;font-size:.9rem}
+.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+label{font-size:.8rem;color:var(--mu);display:block;margin-bottom:3px}
+input{width:100%;padding:10px 6px;font-size:1.05rem;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx)}
+.row{display:flex;gap:8px;margin-top:8px}.row>div{flex:1}
+.btn{display:block;width:100%;padding:11px;margin-top:8px;border-radius:10px;border:1px solid var(--ac);background:var(--ac);color:#fff;font-size:1rem}
+.res div{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--bd)}
+.res .t{font-size:1.25rem;font-weight:700;color:var(--ac);border:0}
+.note{font-size:.75rem;color:var(--mu);margin-top:6px}
+</style></head><body>
+<h1>💎 আল বারাকা জুয়েলার্স</h1>
+<div class="sub">সোনার ওজন ও দামের হিসাব</div>
+
+<div class="card"><h2>১. সোনার ধরন</h2><div class="tabs" id="tabs"></div></div>
+
+<div class="card"><h2>২. ভরি প্রতি দাম (৳)</h2>
+<input id="price" type="number" inputmode="decimal">
+<div class="note" id="pnote"></div>
+<button class="btn" id="fetch">🔄 goldr.org থেকে লাইভ দাম আনুন</button></div>
+
+<div class="card"><h2>৩. ওজন</h2>
+<div class="grid">
+<div><label>ভরি</label><input id="v" type="number" inputmode="decimal" min="0"></div>
+<div><label>আনা</label><input id="a" type="number" inputmode="decimal" min="0"></div>
+<div><label>রতি</label><input id="r" type="number" inputmode="decimal" min="0"></div>
+<div><label>পয়েন্ট</label><input id="p" type="number" inputmode="decimal" min="0"></div></div>
+<div class="row"><div><label>মজুরি (%)</label><input id="m" type="number" inputmode="decimal" min="0"></div>
+<div><label>ভ্যাট (%)</label><input id="vat" type="number" inputmode="decimal" value="5"></div></div>
+<div class="note">১ ভরি = ১৬ আনা, ১ আনা = ৬ রতি, ১ রতি = ১০ পয়েন্ট, ১ ভরি = ১১.৬৬৪ গ্রাম</div></div>
+
+<div class="card res"><h2>ফলাফল</h2>
+<div><span>মোট ওজন</span><b id="w"></b></div>
+<div><span>গ্রামে</span><b id="g"></b></div>
+<div><span>সোনার দাম</span><b id="base"></b></div>
+<div><span>মজুরি</span><b id="mk"></b></div>
+<div><span>ভ্যাট</span><b id="vt"></b></div>
+<div class="t"><span>সর্বমোট</span><b id="tot"></b></div></div>
+
+<script>
+const KEYS={"২২ ক্যারেট":"22","২১ ক্যারেট":"21","১৮ ক্যারেট":"18","সনাতনী":"Traditional"};
+const DEF={"২২ ক্যারেট":230772,"২১ ক্যারেট":220391,"১৮ ক্যারেট":189248,"সনাতনী":154606}; // ৩০ সেপ্টেম্বর ২০২৬
+const G=11.664,$=id=>document.getElementById(id),bn=n=>Number(n).toLocaleString("bn-BD",{maximumFractionDigits:2});
+const ld=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}};
+const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let cur="২২ ক্যারেট", LIVE=ld("abl",{date:"ডিফল্ট (৩০ সেপ্টেম্বর ২০২৬)",prices:DEF}), MAN=ld("abm",{});
+
+const tabs=$("tabs");
+Object.keys(DEF).forEach(k=>{const b=document.createElement("button");b.textContent=k;b.onclick=()=>{cur=k;load()};tabs.appendChild(b)});
+
+function load(){
+  [...tabs.children].forEach(b=>b.classList.toggle("on",b.textContent==cur));
+  const man=MAN[cur]!=null;
+  $("price").value=man?MAN[cur]:(LIVE.prices[cur]??DEF[cur]);
+  $("pnote").textContent=man?"ম্যানুয়াল দাম ব্যবহৃত হচ্ছে":"সূত্র: goldr.org — "+LIVE.date;
+  calc();
+}
+function calc(){
+  const n=id=>+$(id).value||0, vori=n("v")+n("a")/16+n("r")/96+n("p")/960;
+  const base=vori*n("price"), mk=base*n("m")/100, vt=(base+mk)*n("vat")/100;
+  const tp=Math.round(vori*960);
+  $("w").textContent=`${bn(Math.floor(tp/960))} ভরি ${bn(Math.floor(tp%960/60))} আনা ${bn(Math.floor(tp%60/10))} রতি ${bn(tp%10)} পয়েন্ট`;
+  $("g").textContent=bn(vori*G)+" গ্রাম";
+  $("base").textContent="৳"+bn(Math.round(base));$("mk").textContent="৳"+bn(Math.round(mk));
+  $("vt").textContent="৳"+bn(Math.round(vt));$("tot").textContent="৳"+bn(Math.round(base+mk+vt));
+}
+$("price").oninput=()=>{MAN[cur]=+$("price").value;sv("abm",MAN);$("pnote").textContent="ম্যানুয়াল দাম ব্যবহৃত হচ্ছে";calc()};
+["v","a","r","p","m","vat"].forEach(i=>$(i).oninput=calc);
+
+const toNum=s=>{const m=s.match(/৳\s*([0-9০-৯,]+)/);if(!m)return null;
+  return +m[1].replace(/,/g,"").replace(/[০-৯]/g,d=>"০১২৩৪৫৬৭৮৯".indexOf(d));};
+
+async function fetchLive(){
+  const btn=$("fetch");btn.disabled=true;btn.textContent="আনা হচ্ছে...";
+  try{
+    const res=await fetch("https://www.goldr.org/");
+    const html=typeof res.text==="function"?await res.text():res;
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const rows=[...doc.querySelectorAll("tr")];
+    const out={};
+    for(const [name,key] of Object.entries(KEYS)){
+      // গ্রাম/ভরি/আনা/রতি চারটি টেবিলেই সারি আছে; ভরি দামই সবচেয়ে বড়
+      const vals=rows.filter(r=>r.cells.length>1&&new RegExp("^\\s*"+key+"\\s*(Karat)?\\s*Gold","i").test(r.cells[0].textContent))
+        .map(r=>toNum(r.cells[1].textContent)).filter(x=>x>0);
+      if(vals.length) out[name]=Math.max(...vals);
+    }
+    if(Object.keys(out).length<4) throw new Error("parse");
+    LIVE={date:new Date().toLocaleString("bn-BD"),prices:out};sv("abl",LIVE);
+    MAN={};sv("abm",MAN);load();
+  }catch(e){
+    alert("লাইভ দাম আনা যায়নি। ইন্টারনেট চেক করুন অথবা ম্যানুয়ালি দাম লিখুন।");
+  }
+  btn.disabled=false;btn.textContent="🔄 goldr.org থেকে লাইভ দাম আনুন";
+}
+$("fetch").onclick=fetchLive;
+load();
+if(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform())fetchLive();
+</script></body></html>
